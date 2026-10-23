@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Кто онлайн · Звонки</title>
+<style>
+:root{--bg:#fff;--fg:#14161a;--mut:#667085;--card:#f1f3f6;--bd:#d9dde3;--ac:#e8590c;--ok:#2f9e44;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#101216;--fg:#eceef2;--mut:#98a2b3;--card:#1a1d23;--bd:#2c313a}}
+:root[data-theme="dark"]{--bg:#101216;--fg:#eceef2;--mut:#98a2b3;--card:#1a1d23;--bd:#2c313a}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:720px;margin:0 auto;padding:14px}
+h1{font-size:20px;margin:4px 0 12px}
+h2{font-size:14px;margin:0 0 8px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:12px;margin-bottom:12px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row>*{flex:1 1 auto}
+input[type=text],select{width:100%;padding:9px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);color:var(--fg);font:inherit}
+label{display:block;font-size:13px;color:var(--mut);margin:8px 0 3px}
+.chk{display:flex;gap:8px;align-items:center;color:var(--fg);font-size:14px;margin:6px 0}
+button{padding:9px 14px;border:0;border-radius:10px;background:var(--ac);color:#fff;font:inherit;font-weight:600;cursor:pointer}
+button.sec{background:var(--bd);color:var(--fg)}
+button.red{background:#e03131}
+button.ok{background:var(--ok)}
+.peer{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--bd)}
+.peer:first-child{border-top:0}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--ok);flex:none}
+.peer span{flex:1;overflow-wrap:anywhere}
+.peer button{flex:none}
+.vids{display:grid;grid-template-columns:1fr;gap:8px}
+@media(min-width:620px){.vids{grid-template-columns:1fr 1fr}}
+.vbox{position:relative;background:#000;border-radius:12px;overflow:hidden;aspect-ratio:16/9}
+video{width:100%;height:100%;object-fit:contain;display:block}
+#loc{touch-action:none;cursor:crosshair}
+.tag{position:absolute;left:8px;top:8px;background:rgba(0,0,0,.6);color:#fff;font-size:12px;padding:2px 8px;border-radius:8px}
+.mut{color:var(--mut);font-size:13px}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:9;padding:20px}
+#modal .box{background:var(--bg);border-radius:16px;padding:20px;max-width:340px;width:100%;text-align:center}
+#modal .row{justify-content:center;margin-top:14px}
+</style>
+</head>
+<body>
+<main>
+<h1>📞 Кто онлайн</h1>
+
+<div class="card">
+  <h2>Вы</h2>
+  <input type="text" id="name" maxlength="24" placeholder="Ваш ник">
+  <div class="mut" id="conn" style="margin-top:6px">Подключаюсь…</div>
+</div>
+
+<div class="card">
+  <h2>Сейчас на сайте: <span id="cnt">0</span></h2>
+  <div id="peers"><div class="mut">Пока никого, кроме вас. Отправьте ссылку на эту страницу.</div></div>
+</div>
+
+<div class="card" id="callCard" style="display:none">
+  <div class="row"><b id="status" style="flex:1">Звонок</b><button class="red" id="hang" style="flex:none">Завершить</button></div>
+  <div class="vids" style="margin-top:8px">
+    <div class="vbox"><video id="rem" autoplay playsinline></video><div class="tag">Собеседник</div></div>
+    <div class="vbox"><video id="loc" autoplay playsinline muted></video><div class="tag">Вы (то, что видят они)</div></div>
+  </div>
+  <div class="mut" style="margin-top:6px">Чтобы закрыть область размытием, проведите по своему видео пальцем или мышью.</div>
+</div>
+
+<div class="card">
+  <h2>Настройки передачи</h2>
+  <label>Источник</label>
+  <select id="src"><option value="screen">Экран</option><option value="cam">Камера</option></select>
+  <div class="chk"><input type="checkbox" id="mic" checked><label for="mic" style="margin:0;color:var(--fg)">Передавать микрофон</label></div>
+  <div class="row">
+    <div><label>FPS</label>
+    <select id="fps"><option>5</option><option>10</option><option>15</option><option selected>24</option><option>30</option><option>60</option></select></div>
+    <div><label>Качество видео</label>
+    <select id="q"><option value="360,600">Низкое · 360p</option><option value="480,1200">Среднее · 480p</option><option value="720,2500" selected>Высокое · 720p</option><option value="1080,5000">Максимум · 1080p</option></select></div>
+  </div>
+  <p class="mut" style="margin:8px 0 0">Настройки применяются сразу, в том числе во время звонка.</p>
+</div>
+
+<div class="card">
+  <h2>Размытие</h2>
+  <div class="chk"><input type="checkbox" id="bOn"><label for="bOn" style="margin:0;color:var(--fg)"><b>Включить размытие</b></label></div>
+  <div id="bOpts" style="opacity:.5">
+    <div class="chk"><input type="checkbox" id="bAll"><label for="bAll" style="margin:0;color:var(--fg)">Весь экран</label></div>
+    <div class="chk"><input type="checkbox" id="bTop"><label for="bTop" style="margin:0;color:var(--fg)">Верхняя панель (вкладки, адрес)</label></div>
+    <div class="chk"><input type="checkbox" id="bBot"><label for="bBot" style="margin:0;color:var(--fg)">Нижняя панель (таскбар, уведомления)</label></div>
+    <div class="chk"><input type="checkbox" id="bFace"><label for="bFace" style="margin:0;color:var(--fg)" id="bFaceL">Лица</label></div>
+    <div class="chk"><input type="checkbox" id="bReg" checked><label for="bReg" style="margin:0;color:var(--fg)">Свои области (рисуются на превью)</label></div>
+    <label>Сила размытия</label>
+    <input type="range" id="bPow" min="4" max="40" value="18" style="width:100%">
+    <div class="row" style="margin-top:8px"><button class="sec" id="bClr">Очистить свои области</button></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Проверка</h2>
+  <div class="row"><button class="sec" id="test">Предпросмотр без звонка</button></div>
+  <div class="mut" style="margin-top:8px">Звонок идёт напрямую между устройствами (WebRTC). Сайт нужен только для списка онлайн и соединения.</div>
+</div>
+</main>
+
+<div id="modal"><div class="box"><div style="font-size:40px">📞</div><b id="mTxt">Входящий звонок</b>
+<div class="row"><button class="ok" id="mYes">Принять</button><button class="red" id="mNo">Отклонить</button></div></div></div>
+
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)};
+var ICE=[{urls:["stun:stun.l.google.com:19302","stun:stun1.l.google.com:19302","stun:stun.cloudflare.com:3478","stun:stun.nextcloud.com:443"]}];
+var room=null,me=null,peersNow=[],pc=null,remote=null,iceBuf=[],pend=null,busy=false;
+var raw=null,mic=null,out=null,timer=null,faces=[],regions=[],drag=null,faceTimer=null;
+var vid=document.createElement("video");vid.muted=true;vid.playsInline=true;
+var cv=document.createElement("canvas"),ctx=cv.getContext("2d");
+var asm={};
+
+/* ник */
+var nm="";try{nm=localStorage.getItem("nm")||""}catch(e){}
+if(!nm)nm="Гость-"+Math.floor(1000+Math.random()*9000);
+$("name").value=nm;
+$("name").addEventListener("input",function(){nm=$("name").value.trim()||"Гость";try{localStorage.setItem("nm",nm)}catch(e){}if(room)room.presence({name:nm}).catch(function(){})});
+
+/* комната */
+function esc(s){var d=document.createElement("div");d.textContent=s;return d.innerHTML}
+function render(){
+  var others=peersNow.filter(function(p){return !p.isMe});
+  $("cnt").textContent=peersNow.filter(function(p){return !p.sameTab||true}).length;
+  var h=$("peers");h.innerHTML="";
+  if(!others.length){h.innerHTML='<div class="mut">Пока никого, кроме вас. Отправьте ссылку на эту страницу.</div>';return}
+  others.forEach(function(p){
+    var r=document.createElement("div");r.className="peer";
+    var d=document.createElement("i");d.className="dot";
+    var s=document.createElement("span");s.textContent=(p.presence&&p.presence.name)||"Гость";
+    var b=document.createElement("button");b.textContent="Позвонить";
+    b.onclick=function(){call(p.peer,s.textContent)};
+    r.appendChild(d);r.appendChild(s);r.appendChild(b);h.appendChild(r);
+  });
+}
+function initRoom(){
+  if(!window.claude||!claude.use){$("conn").textContent="Откройте страницу через claude.ai — здесь комната недоступна.";return}
+  claude.use("room").then(function(r){
+    if(!r){$("conn").textContent="Комната недоступна: войдите в claude.ai (по публичной ссылке без входа не подключиться).";return}
+    room=r;
+    r.onConnection(function(c){$("conn").textContent=c?"✅ В сети":"Переподключение…"});
+    r.onPeers(function(ch){
+      peersNow=ch.peers.slice();
+      var mine=peersNow.filter(function(p){return p.isMe&&p.sameTab})[0];if(mine)me=mine.peer;
+      render();
+    });
+    r.presence({name:nm}).catch(function(){});
+    r.on("sig",onSig);
+  }).catch(function(){$("conn").textContent="Не удалось подключиться к комнате."});
+}
+
+/* сигналинг с разбивкой на куски (лимит 4 КБ на сообщение) */
+function send(to,obj){
+  if(!room)return;
+  var s=JSON.stringify(obj),id=Math.random().toString(36).slice(2,8),n=Math.ceil(s.length/2400);
+  for(var i=0;i<n;i++)room.emit("sig",{to:to,id:id,i:i,n:n,p:s.slice(i*2400,(i+1)*2400)}).catch(function(){});
+}
+function onSig(m){
+  var d=m.data;if(m.isMe||!d||d.to!==me)return;
+  var k=m.peer+d.id,a=asm[k]=asm[k]||{n:d.n,parts:[],c:0};
+  if(!a.parts[d.i]){a.parts[d.i]=d.p;a.c++}
+  if(a.c===a.n){delete asm[k];try{handle(m.peer,JSON.parse(a.parts.join("")))}catch(e){}}
+}
+function handle(from,o){
+  if(o.t==="offer"){
+    if(busy){send(from,{t:"busy"});return}
+    pend={from:from,sdp:o.sdp};busy=true;
+    var pe=peersNow.filter(function(p){return p.peer===from})[0];
+    $("mTxt").textContent=((pe&&pe.presence&&pe.presence.name)||"Гость")+" звонит вам";
+    $("modal").style.display="flex";
+  }else if(o.t==="answer"&&pc&&from===remote){
+    pc.setRemoteDescription({type:"answer",sdp:o.sdp}).then(flush).catch(fail);
+  }else if(o.t==="ice"&&from===remote){
+    if(pc&&pc.remoteDescription)pc.addIceCandidate(o.c).catch(function(){});else iceBuf.push(o.c);
+  }else if(o.t==="busy"&&from===remote){status("Абонент занят");setTimeout(end,1500)}
+  else if(o.t==="bye"&&from===remote){end()}
+}
+function flush(){iceBuf.splice(0).forEach(function(c){pc.addIceCandidate(c).catch(function(){})})}
+
+/* медиа + размытие */
+function qv(){var a=$("q").value.split(",");return{h:+a[0],kbps:+a[1]}}
+function pick(n){return $(n).checked}
+function loop(){
+  if(!vid.videoWidth)return;
+  var h=qv().h,asp=vid.videoWidth/vid.videoHeight,w=Math.round(h*asp/2)*2;
+  if(cv.height!==h||cv.width!==w){cv.height=h;cv.width=w}
+  ctx.filter="none";ctx.drawImage(vid,0,0,w,h);
+  if(!pick("bOn"))return;
+  var px=+$("bPow").value*(h/480),R=[];
+  if(pick("bAll"))R.push([0,0,w,h]);
+  if(pick("bTop"))R.push([0,0,w,h*0.09]);
+  if(pick("bBot"))R.push([0,h*0.91,w,h*0.09]);
+  if(pick("bFace"))faces.forEach(function(f){R.push([f.x/vid.videoWidth*w-10,f.y/vid.videoHeight*h-10,f.w/vid.videoWidth*w+20,f.h/vid.videoHeight*h+20])});
+  if(pick("bReg"))regions.concat(drag?[drag]:[]).forEach(function(g){R.push([g.x*w,g.y*h,g.w*w,g.h*h])});
+  R.forEach(function(r){
+    ctx.save();ctx.beginPath();ctx.rect(r[0],r[1],r[2],r[3]);ctx.clip();
+    ctx.filter="blur("+px+"px)";ctx.drawImage(vid,0,0,w,h);ctx.restore();
+  });
+  ctx.filter="none";
+}
+function restartLoop(){clearInterval(timer);timer=setInterval(loop,1000/+$("fps").value)}
+async function media(){
+  stopMedia();
+  var f=+$("fps").value,h=qv().h;
+  if($("src").value==="screen"){
+    raw=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:f}});
+  }else{
+    raw=await navigator.mediaDevices.getUserMedia({video:{height:{ideal:h},frameRate:{ideal:f}}});
+  }
+  if($("mic").checked){try{mic=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}})}catch(e){mic=null}}
+  vid.srcObject=raw;await vid.play();
+  await new Promise(function(r){if(vid.videoWidth)r();else vid.onloadedmetadata=r});
+  loop();restartLoop();
+  out=cv.captureStream();
+  if(mic)mic.getAudioTracks().forEach(function(t){out.addTrack(t)});
+  $("loc").srcObject=out;
+  if(raw.getVideoTracks()[0])raw.getVideoTracks()[0].onended=function(){if(pc)hangup();else stopMedia()};
+  faceLoop();
+}
+function stopMedia(){
+  clearInterval(timer);clearInterval(faceTimer);
+  [raw,mic,out].forEach(function(s){if(s)s.getTracks().forEach(function(t){t.stop()})});
+  raw=mic=out=null;$("loc").srcObject=null;
+}
+/* лица (Chrome: FaceDetector) */
+var FD=null;
+if("FaceDetector" in window){try{FD=new window.FaceDetector({fastMode:true})}catch(e){}}
+if(!FD){$("bFace").disabled=true;$("bFaceL").textContent="Лица (не поддерживается этим браузером)"}
+function faceLoop(){
+  clearInterval(faceTimer);
+  if(!FD)return;
+  faceTimer=setInterval(function(){
+    if(!pick("bOn")||!pick("bFace")||!vid.videoWidth){faces=[];return}
+    FD.detect(vid).then(function(r){faces=r.map(function(x){return x.boundingBox})}).catch(function(){});
+  },250);
+}
+/* рисование областей */
+var L=$("loc");
+function pt(e){var r=L.getBoundingClientRect(),vw=r.width,vh=r.height,va=cv.width/cv.height||16/9,w=vw,h=vw/va;if(h>vh){h=vh;w=vh*va}
+  var ox=(vw-w)/2,oy=(vh-h)/2;return{x:Math.min(1,Math.max(0,(e.clientX-r.left-ox)/w)),y:Math.min(1,Math.max(0,(e.clientY-r.top-oy)/h))}}
+L.addEventListener("pointerdown",function(e){if(!out)return;var p=pt(e);drag={x:p.x,y:p.y,w:0,h:0,sx:p.x,sy:p.y};L.setPointerCapture(e.pointerId);$("bReg").checked=true;if(!pick("bOn")){$("bOn").checked=true;bt()}});
+L.addEventListener("pointermove",function(e){if(!drag)return;var p=pt(e);drag.x=Math.min(p.x,drag.sx);drag.y=Math.min(p.y,drag.sy);drag.w=Math.abs(p.x-drag.sx);drag.h=Math.abs(p.y-drag.sy)});
+function up(){if(drag&&drag.w>0.01&&drag.h>0.01)regions.push({x:drag.x,y:drag.y,w:drag.w,h:drag.h});drag=null}
+L.addEventListener("pointerup",up);L.addEventListener("pointercancel",up);
+$("bClr").onclick=function(){regions=[]};
+function bt(){$("bOpts").style.opacity=pick("bOn")?1:.5}
+$("bOn").addEventListener("change",bt);
+
+/* звонок */
+function status(t){$("status").textContent=t;$("callCard").style.display="block"}
+function fail(e){status("Ошибка: "+(e&&e.message||e));setTimeout(end,2500)}
+function setBitrate(){
+  if(!pc)return;
+  pc.getSenders().forEach(function(s){
+    if(s.track&&s.track.kind==="video"){
+      var p=s.getParameters();if(!p.encodings||!p.encodings.length)p.encodings=[{}];
+      p.encodings[0].maxBitrate=qv().kbps*1000;p.encodings[0].maxFramerate=+$("fps").value;
+      s.setParameters(p).catch(function(){});
+    }
+  });
+}
+async function mkPc(to){
+  remote=to;busy=true;iceBuf=[];
+  await media();
+  pc=new RTCPeerConnection({iceServers:ICE});
+  out.getTracks().forEach(function(t){pc.addTrack(t,out)});
+  pc.ontrack=function(e){$("rem").srcObject=e.streams[0]};
+  pc.onicecandidate=function(e){if(e.candidate)send(to,{t:"ice",c:e.candidate})};
+  pc.onconnectionstatechange=function(){
+    var s=pc&&pc.connectionState;
+    if(s==="connected"){status("На связи");setBitrate()}
+    else if(s==="failed"){status("Не удалось соединиться напрямую (сеть блокирует P2P)");setTimeout(end,3000)}
+    else if(s==="disconnected")status("Связь прервалась…");
+  };
+}
+async function call(to,name){
+  if(busy||!room)return;
+  try{
+    status("Звоним: "+name+"…");
+    await mkPc(to);
+    var o=await pc.createOffer();await pc.setLocalDescription(o);
+    send(to,{t:"offer",sdp:o.sdp});
+    setTimeout(function(){if(pc&&pc.connectionState!=="connected"&&pc.connectionState!=="connecting"&&$("status").textContent.indexOf("Звоним")===0){status("Нет ответа");setTimeout(hangup,1200)}},45000);
+  }catch(e){busy=false;fail(e)}
+}
+$("mYes").onclick=async function(){
+  $("modal").style.display="none";if(!pend)return;
+  var p=pend;pend=null;
+  try{
+    status("Соединяем…");await mkPc(p.from);
+    await pc.setRemoteDescription({type:"offer",sdp:p.sdp});flush();
+    var a=await pc.createAnswer();await pc.setLocalDescription(a);
+    send(p.from,{t:"answer",sdp:a.sdp});
+  }catch(e){fail(e)}
+};
+$("mNo").onclick=function(){$("modal").style.display="none";if(pend){send(pend.from,{t:"bye"});pend=null}busy=false};
+function end(){
+  if(pc){try{pc.close()}catch(e){}pc=null}
+  stopMedia();remote=null;busy=false;iceBuf=[];$("rem").srcObject=null;$("callCard").style.display="none";
+}
+function hangup(){if(remote)send(remote,{t:"bye"});end()}
+$("hang").onclick=hangup;
+
+/* предпросмотр без звонка */
+$("test").onclick=async function(){
+  if(pc)return;
+  try{status("Предпросмотр");await media();$("hang").onclick=function(){end();$("hang").onclick=hangup}}catch(e){fail(e)}
+};
+
+/* живое применение настроек */
+$("fps").addEventListener("change",function(){if(out){restartLoop();setBitrate()}});
+$("q").addEventListener("change",setBitrate);
+$("src").addEventListener("change",function(){if(!out)return;
+  media().then(function(){if(pc)pc.getSenders().forEach(function(s){if(s.track&&s.track.kind==="video")s.replaceTrack(out.getVideoTracks()[0])})}).catch(fail)});
+
+window.addEventListener("beforeunload",function(){if(remote)send(remote,{t:"bye"})});
+initRoom();
+})();
+</script>
+</body>
+</html>
